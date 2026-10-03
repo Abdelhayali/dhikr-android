@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
@@ -70,7 +69,33 @@ fun MushafPageView(
      */
     onSurahTop: ((surah: Int, y: Int) -> Unit)? = null
 ) {
-    var widthPx by remember { mutableIntStateOf(0) }
+    /**
+     * العرض يُؤخذ من القيود أثناء البناء، لا بعد أول رسم. فلو قيس بعده لرُسمت الصفحة
+     * أولًا بلا سطور — بارتفاع تذييلها وحده — وعند فتح سورة من آخر المصحف تملأ القائمةُ
+     * الشاشةَ بصفحات قبلها وهي قصيرة هكذا، ثم تكبر فتستقرّ القائمة عند الضحى.
+     */
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        PageContent(
+            page, fontFamily, arabicDigits, juz, zoom, highlight, surahNameOf,
+            onAyahTap, onTap, onSurahTop, widthPx = constraints.maxWidth
+        )
+    }
+}
+
+@Composable
+private fun PageContent(
+    page: QcfPage,
+    fontFamily: FontFamily,
+    arabicDigits: Boolean,
+    juz: Int?,
+    zoom: Float,
+    highlight: AyahRef?,
+    surahNameOf: (Int) -> String,
+    onAyahTap: (QcfAyah) -> Unit,
+    onTap: (() -> Unit)?,
+    onSurahTop: ((surah: Int, y: Int) -> Unit)?,
+    widthPx: Int
+) {
     val density = LocalDensity.current
     val highlightColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
 
@@ -104,9 +129,8 @@ fun MushafPageView(
     val hScroll = rememberScrollState()
 
     Column(
-        modifier
+        Modifier
             .fillMaxWidth()
-            .onSizeChanged { widthPx = it.width }
             // ما بين السطور — العنوان والبسملة والهوامش — يستجيب للمسة كذلك
             .then(
                 if (onTap != null) Modifier.pointerInput(onTap) { detectTapGestures { onTap() } }

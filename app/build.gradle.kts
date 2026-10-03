@@ -13,8 +13,8 @@ android {
         applicationId = "com.abdelhay.dhikr"
         minSdk = 24
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.3"
+        versionCode = 13
+        versionName = "2.4"
         // اللغة الافتراضية عربية مع دعم RTL
         resourceConfigurations += setOf("ar", "en")
     }
