@@ -3,6 +3,21 @@
 مشروع Android كامل بلغة Kotlin وواجهة Jetpack Compose، قاعدة بيانات Room، وإعدادات DataStore.
 واجهة عربية بالكامل مع فرض اتجاه RTL.
 
+## صور من التطبيق
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/ward.jpg" width="220" alt="ورد اليوم"><br>ورد اليوم</td>
+    <td align="center"><img src="docs/screenshots/counter.jpg" width="220" alt="عدّاد الذكر"><br>عدّاد الذكر</td>
+    <td align="center"><img src="docs/screenshots/mushaf.jpg" width="220" alt="المصحف والتفسير"><br>المصحف والتفسير والتلاوة</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/khatma.jpg" width="220" alt="خطة الختمة"><br>خطة الختمة</td>
+    <td align="center"><img src="docs/screenshots/prayer.jpg" width="220" alt="مواقيت الصلاة"><br>مواقيت الصلاة</td>
+    <td align="center"><img src="docs/screenshots/radio.jpg" width="220" alt="إذاعات القرآن"><br>إذاعات القرآن</td>
+  </tr>
+</table>
+
 ---
 
 ## ما يغطّيه المشروع من طلبك
