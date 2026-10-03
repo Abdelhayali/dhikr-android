@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.SpanStyle
@@ -61,7 +63,12 @@ fun MushafPageView(
      * لمسة على الصفحة. إن وُجد صارت اللمسة له (إظهار أدوات القراءة وإخفاؤها)،
      * وانتقل فتح الآية إلى الضغط المطوّل.
      */
-    onTap: (() -> Unit)? = null
+    onTap: (() -> Unit)? = null,
+    /**
+     * موضع عنوان كل سورة تبدأ في الصفحة، بالبكسل من أعلاها — به يُفتح المصحف على
+     * السورة نفسها لا على أعلى صفحتها، إذ تتشارك السور القصار الصفحة الواحدة.
+     */
+    onSurahTop: ((surah: Int, y: Int) -> Unit)? = null
 ) {
     var widthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -114,7 +121,11 @@ fun MushafPageView(
         if (baseSizeSp > 0f) {
             page.lines.forEach { line ->
                 if (line.surahStart != 0) {
-                    SurahBanner(surahNameOf(line.surahStart))
+                    Box(
+                        Modifier.onGloballyPositioned { c ->
+                            onSurahTop?.invoke(line.surahStart, c.positionInParent().y.toInt())
+                        }
+                    ) { SurahBanner(surahNameOf(line.surahStart)) }
                     // التوبة وحدها بلا بسملة
                     if (line.surahStart != 9) Basmala(baseSizeSp)
                 }

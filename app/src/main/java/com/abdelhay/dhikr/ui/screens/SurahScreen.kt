@@ -86,7 +86,22 @@ fun SurahScreen(
     val currentPage = pageAt(listState.firstVisibleItemIndex)
 
     // المصحف متصل: السورة الجارية هي سورة الصفحة المعروضة، لا السورة التي فُتح عندها.
-    val currentSurah = currentPage?.firstAyah?.surah ?: surahId
+    // ومن الضحى فما بعدها تتشارك السور الصفحة، فالجارية آخر سورة بلغ عنوانُها أعلى الشاشة.
+    val surahTops = remember { mutableStateMapOf<Pair<Int, Int>, Int>() }
+    // derivedStateOf: موضع التمرير يتغيّر كل إطار، والشاشة لا تُعاد إلا إذا تبدّلت السورة
+    val currentSurah by remember(qcfPages, surahId) {
+        derivedStateOf {
+            val p = pageAt(listState.firstVisibleItemIndex) ?: return@derivedStateOf surahId
+            val scrolled = listState.firstVisibleItemScrollOffset
+            p.lines.filter { it.surahStart != 0 }
+                .lastOrNull { l -> (surahTops[p.page to l.surahStart] ?: Int.MAX_VALUE) <= scrolled + 2 }
+                ?.surahStart
+                ?: p.firstAyah?.surah
+                ?: surahId
+        }
+    }
+    /** أول آية من السورة الجارية في الصفحة المعروضة — بها يُحفظ الموضع ويُبدأ التشغيل. */
+    val currentAyah = currentPage?.ayahs?.firstOrNull { it.surah == currentSurah }?.ayah ?: 1
     val playingAyah = playingRef?.takeIf { it.surah == currentSurah }?.ayah
 
     /**
@@ -104,21 +119,28 @@ fun SurahScreen(
     var userMoved by remember(surahId, startAyah) { mutableStateOf(false) }
     LaunchedEffect(dragging) { if (dragging) userMoved = true }
 
-    LaunchedEffect(qcfPages, target) {
-        if (qcfPages.isEmpty() || userMoved) return@LaunchedEffect
-        val idx = qcfPages.indexOfFirst { p -> p.ayahs.any { it.ayah >= target && it.surah == surahId } }
-        if (idx >= 0) listState.scrollToItem(idx + headerItems)
+    val targetIndex = qcfPages.indexOfFirst { p -> p.ayahs.any { it.ayah >= target && it.surah == surahId } }
+    val targetPage = qcfPages.getOrNull(targetIndex)
+    // السورة تبدأ في وسط صفحتها: ننزل إلى عنوانها، ويُعرف موضعه بعد رسم الصفحة
+    val targetTop: Int? = when {
+        targetPage == null -> null
+        targetPage.firstAyah?.surah == surahId -> 0
+        else -> surahTops[targetPage.page to surahId]
+    }
+
+    LaunchedEffect(qcfPages, target, targetTop) {
+        if (targetIndex < 0 || userMoved) return@LaunchedEffect
+        listState.scrollToItem(targetIndex + headerItems, targetTop ?: 0)
     }
 
     // الموضع لا يُحفظ إلا بعد أن يقرأ القارئ ويمرّر — لا أثناء تبدّل القائمة عند الفتح
-    LaunchedEffect(listState.firstVisibleItemIndex, qcfPages) {
-        if (!userMoved) return@LaunchedEffect
-        val a = currentPage?.firstAyah ?: return@LaunchedEffect
-        vm.rememberPosition(a.surah, a.ayah)
+    LaunchedEffect(listState.firstVisibleItemIndex, qcfPages, currentSurah) {
+        if (!userMoved || currentPage == null) return@LaunchedEffect
+        vm.rememberPosition(currentSurah, currentAyah)
     }
 
-    /** أول آية في الصفحة المعروضة — الفاصل يحفظ الصفحة لا الآية التي وقعت عليها العين. */
-    fun visibleAyah(): Int = currentPage?.firstAyah?.ayah ?: 1
+    /** الفاصل يحفظ أول آية من السورة الجارية في الصفحة، لا الآية التي وقعت عليها العين. */
+    fun visibleAyah(): Int = currentAyah
 
     /**
      * القراءة بملء الشاشة: الأدوات وأشرطة النظام تختفي، وتظهر بلمسة على الصفحة.
@@ -180,7 +202,10 @@ fun SurahScreen(
                             highlight = playingRef,
                             surahNameOf = { id -> index.firstOrNull { it.id == id }?.name.orEmpty() },
                             onAyahTap = { a -> vm.showTafsir(a.surah, a.ayah) },
-                            onTap = toggleChrome
+                            onTap = toggleChrome,
+                            onSurahTop = { s, y ->
+                                if (surahTops[qp.page to s] != y) surahTops[qp.page to s] = y
+                            }
                         )
                     }
                 }
@@ -213,7 +238,7 @@ fun SurahScreen(
                         actions = {
                             IconButton(onClick = {
                                 if (playingAyah != null) vm.togglePlayback()
-                                else vm.playFrom(currentSurah, currentPage?.firstAyah?.ayah ?: 1)
+                                else vm.playFrom(currentSurah, currentAyah)
                             }) {
                                 Icon(
                                     if (playingAyah != null && isPlaying) Icons.Filled.Pause
